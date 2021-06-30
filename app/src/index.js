@@ -1,12 +1,12 @@
 import Web3 from "web3";
-import metaCoinArtifact from "./Certificate.json";
+import certificateArtifact from "./Certificate.json";
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
 const App = {
   web3: null,
   account: null,
-  meta: null,
+  contract: null,
 
   start: async function() {
     $('#spinner').hide();
@@ -16,9 +16,9 @@ const App = {
     try {
       // get contract instance
       const networkId = await web3.eth.net.getId();
-      const deployedNetwork = metaCoinArtifact.networks[networkId];
-      this.meta = new web3.eth.Contract(
-        metaCoinArtifact.abi,
+      const deployedNetwork = certificateArtifact.networks[networkId];
+      this.contract = new web3.eth.Contract(
+        certificateArtifact.abi,
         deployedNetwork.address,
       );
 
@@ -38,7 +38,7 @@ const App = {
 
     $('#spinner').show();
 
-    const { registerCertificate } = this.meta.methods;
+    const { registerCertificate } = this.contract.methods;
     const identityIdHash = await this.hashIdentity($('#identity_type').val(), $('#identity_id').val());
     console.log("identityIdHash:", identityIdHash)
     const doseDateArray = $('#dose_date').val().split('/');
@@ -55,8 +55,9 @@ const App = {
       ).send({ from: App.account });
       console.log("transaction:", resp);
 
-      $('#name').qrcode( {text: identityIdHash} );
+      $('#qrCodeDiv').qrcode( {text: identityIdHash} );
       $('#qrlink').attr("href", identityIdHash);
+      $("#transactionHash").attr("href", `https://ropsten.etherscan.io/tx/${resp.transactionHash}`);
       $('#mainForm').hide();
       $('#qrResults').show();
     } catch(e) {
@@ -78,13 +79,13 @@ const App = {
       $('#validCert').hide();
       $('#invalidCert').hide();
       $('#certificateContainer').show();
+      $('#qrResults').hide();
       
-      const { verifyCertificate } = App.meta.methods;
+      const { verifyCertificate } = App.contract.methods;
       const data = await verifyCertificate(identifyHash).call()
       console.log("data:", data);
 
       blockchainIdentityId = data[1];
-      $('#qrResults').hide();
       $('#viewCertDocType').text(data[0]);
       $('#viewCertManuf').text(data[2]);
       $('#viewCertDoseDate').text(new Date(data[3] * 1000).toISOString().split('T')[0]);
